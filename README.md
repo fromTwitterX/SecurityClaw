@@ -1,4 +1,4 @@
-# SecurityClaw — Autonomous SOC Agentic Framework
+# NetLoom — Autonomous SOC Agentic Framework
 
 A modular, skill-based autonomous Security Operations Center (SOC) agent that monitors OpenSearch/Elasticsearch data, builds RAG-based behavioral memory, and validates real-time anomalies using LLMs.
 
