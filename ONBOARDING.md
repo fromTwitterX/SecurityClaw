@@ -17,17 +17,7 @@ This script will:
 
 The web UI will be available at `http://localhost:5173` and the API at `http://localhost:7799`.
 
-## Classic Setup
-
-## Quick Start
-
-The interactive configuration wizard guides you through setting up SecurityClaw in minutes.
-
-### Step 1: Run the Onboarding Wizard
-
-```bash
-.venv/bin/python main.py onboard
-```
+## Classic Setup (CLI / Background Agent)
 
 ### Step 0 (Optional): Quick Ollama Setup
 
@@ -41,6 +31,12 @@ curl -fsSL https://ollama.com/install.sh | sh
 ollama serve
 ollama pull qwen2.5:7b-instruct-q4_K_M
 ollama pull nomic-embed-text:latest
+```
+
+### Step 1: Run the Configuration Wizard
+
+```bash
+.venv/bin/python main.py onboard
 ```
 
 This launches an interactive CLI that will ask you about:
@@ -119,6 +115,8 @@ Each skill declares:
 .venv/bin/python main.py chat
 ```
 
+**Conversation persistence**: Conversations and agent memory are stored in `data/conversations.db` (SQLite, created automatically on first run). Each chat session writes to this file via the LangGraph `SqliteSaver` checkpointer — no manual maintenance is needed.
+
 **First chat startup**: SecurityClaw will check for any missing skill-specific variables and prompt you to configure them. This includes:
 - MaxMind license key (for `geoip_lookup`)
 - Threat intelligence API keys (for `threat_analyst`)
@@ -149,6 +147,30 @@ The agent will:
 - Poll OpenSearch for logs and anomaly findings
 - Build RAG context from normal behavior
 - Issue threat verdicts using the LLM
+
+### Step 6: (Recommended) Run the Web Service
+
+For the full interactive experience with the React web UI and REST API:
+
+```bash
+.venv/bin/python main.py service
+```
+
+This starts:
+- **Web UI** at `http://localhost:5173` (React frontend)
+- **REST API** at `http://localhost:7799` (FastAPI with streaming)
+- **Background scheduler** (anomaly watcher + memory builder)
+
+The web interface provides:
+- **Chat panel** — Real-time LLM reasoning and skill routing
+- **Configuration editor** — Edit config.yaml and .env
+- **Skill management** — View skills, edit schedules, trigger manually
+- **Conversation history** — Browse and restore past sessions
+
+To start **API-only** (without the scheduler or frontend):
+```bash
+SECURITYCLAW_API_ONLY=1 .venv/bin/python main.py service
+```
 
 ### Feature Maturity Notes
 
@@ -247,6 +269,39 @@ required_env_vars:
 
 On next `python main.py onboard` or `python main.py chat`, SecurityClaw will detect and prompt for `MY_API_KEY`.
 
+For chat-orchestrated skills, the manifest should also declare the routing contract the supervisor will use:
+
+```yaml
+name: my_custom_skill
+routing_group: evidence_search
+orchestration_role: direct
+capability_groups:
+  - evidence_search
+prerequisites:
+  - group: schema_discovery
+    why: "Need field mappings before building a grounded query"
+conditional_prerequisites:
+  - groups:
+      - schema_discovery
+    when_any_question_patterns:
+      - regex: "\\btraffic\\b"
+    skip_if_explicit_field_syntax: true
+conditional_recovery:
+  - position: front
+    requires_result_predicates:
+      - skill: opensearch_querier
+        path: validation_failed
+        equals: true
+    add_groups_after:
+      - evidence_search
+requires_explicit_entity: false
+returns:
+  - results
+  - results_count
+```
+
+The supervisor now repairs its plan against the loaded manifest inventory before execution and applies manifest-declared recovery policies after partial results, so missing `routing_group`, `capability_groups`, `prerequisites`, `conditional_recovery`, or other routing-contract metadata will weaken planning quality.
+
 ---
 
 ## Troubleshooting
@@ -271,11 +326,15 @@ On next `python main.py onboard` or `python main.py chat`, SecurityClaw will det
 ```
 Simply repeat the wizard to update any settings (existing values are shown as defaults).
 
+**Conversation history not appearing**
+- Conversation state is stored in `data/conversations.db`. If the file is missing or corrupted, delete it and restart; a fresh database will be created automatically.
+- Use `/history` inside chat to browse past conversations.
+
 ---
 
 ## Architecture
 
-- **Modular Skills**: Each skill in `/skills/<name>/` has `logic.py` (Python) + `instruction.md` (LLM system prompt)
+- **Modular Skills**: Each skill in `/skills/<name>/` has `logic.py` (Python) + `instruction.md` (LLM system prompt) + `manifest.yaml` (routing contract)
 - **Scheduler**: APScheduler fires skills on intervals (1-minute watcher, 6-hour baseliner)
 - **RAG**: Embeddings stored in vector index; retrieved for contextual LLM analysis
 - **Provider Agnostic**: Swap DB backends and LLMs via config without code changes

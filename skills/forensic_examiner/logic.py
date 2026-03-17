@@ -8,7 +8,7 @@ decide what to search for and how to build a timeline.
 Context keys consumed:
     context["db"]         -> BaseDBConnector
     context["llm"]        -> BaseLLMProvider
-    context["memory"]     -> AgentMemory
+    context["memory"]     -> Memory instance (StateBackedMemory or CheckpointBackedMemory)
     context["config"]     -> Config
     context["parameters"] -> {"question": "incident description"}
 """
@@ -18,11 +18,12 @@ import json
 import logging
 import re
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
-INSTRUCTION_PATH = __import__("pathlib").Path(__file__).parent / "instruction.md"
+INSTRUCTION_PATH = Path(__file__).parent / "instruction.md"
 SKILL_NAME = "forensic_examiner"
 
 

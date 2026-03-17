@@ -4,7 +4,7 @@ import json
 from unittest.mock import Mock, patch
 
 from core.query_repair import _is_valid_query_structure
-from skills.chat_router.logic import route_question
+from core.chat_router.logic import route_question
 from skills.forensic_examiner import logic as forensic_logic
 
 
@@ -16,8 +16,8 @@ class _RoutingLLM:
         if "Analyze this security question" in user_prompt:
             return json.dumps(
                 {
-                    "reasoning": "initial model choice",
-                    "skills": ["baseline_querier"],
+                    "reasoning": "explicit forensic follow-up request",
+                    "skills": ["forensic_examiner"],
                     "parameters": {},
                 }
             )
@@ -99,6 +99,11 @@ class _ForensicLLM:
             )
 
         return json.dumps({"summary": "fallback", "search_queries": []})
+
+    def embed(self, text: str) -> list[float]:
+        """Mock embedding method required by RAG engine."""
+        # Return a deterministic embedding for test purposes
+        return [0.1] * 384  # Standard embedding size
 
 
 class _Config:
