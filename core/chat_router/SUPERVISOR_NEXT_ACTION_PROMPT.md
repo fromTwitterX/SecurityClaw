@@ -97,6 +97,7 @@ When routing investigation chains, understand skill dependencies:
 ### Questions about "What's normal? (Baseline/Anomaly)"
 - User asks about normal behavior, baseline, anomalies, deviations
 - They want behavioral context: "is this normal"; "typical activity"; "anomalies"
+- **Examples of baseline questions**: "is this normal?"; "baseline behavior"; "expected activity"; "frequent traffic"; "how often do we see..."; "what's typical"; "usual behavior"; "common behavior"
 - **Prerequisite**: Must have evidence first (traffic to compare against baseline)
 - **Skills to consider**: baseline_querier (calculates baselines)
 
@@ -145,6 +146,13 @@ When routing investigation chains, understand skill dependencies:
    - Do NOT confuse "show me traffic" (raw data) with "is this malicious" (threat question)
    - Do NOT reframe one answer type into another. For example, passive fingerprinting is not the same as geolocation or threat enrichment.
    - The CURRENT question determines skill selection, not prior questions
+
+5. **Pass Query Constraints When Applicable**:
+   - When the question mentions a specific source location/country (e.g., "traffic from iran"), include `source_country: "iran"` in the parameters
+   - When the question mentions a specific port, include `source_port` in parameters
+   - When the question mentions TCP/UDP, include `protocol` in parameters
+   - Let skills use these constraints to filter results appropriately
+   - Unlike heuristics (which are forbidden), explicit reasoning about constraints is encouraged
 
 ## Your Response
 
